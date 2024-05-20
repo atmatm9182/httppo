@@ -1,7 +1,7 @@
 PROJECT_NAME = cerver
 
 BUILD_DIR = build
-SOURCES = src/main.c src/thread_pool.c
+SOURCES = src/main.c src/thread_pool.c src/protocol.c
 SOURCES_OBJS = $(SOURCES:.c=.o)
 COMPILED_OBJS = $(addprefix $(BUILD_DIR)/,$(notdir $(SOURCES_OBJS)))
 
