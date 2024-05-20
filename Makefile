@@ -1,4 +1,4 @@
-PROJECT_NAME = cerver
+PROJECT_NAME = httppo
 
 BUILD_DIR = build
 SOURCES = src/main.c src/thread_pool.c src/protocol.c

@@ -69,6 +69,9 @@ char* http_res_encode(HttpResponse const* res) {
 
 void http_res_free(HttpResponse* res) {
     ht_destroy(&res->headers);
+    if (res->body) {
+        free((void*)res->body);
+    }
 }
 
 // TODO: use a better hash function

@@ -16,6 +16,8 @@
 
 #define PORT "6969"
 
+#define HTML_INDEX_FILE "index.html"
+
 void* server_worker(void* socket) {
     int sock = (int)(uintptr_t)socket;
 
@@ -30,9 +32,17 @@ void* server_worker(void* socket) {
     assert(req);
 
     http_req_print(req);
-    http_req_free(req);
 
-    HttpResponse res = http_res_new(STATUS_OK, NULL, ht_make(NULL, NULL, 0));
+    const char* body = NULL;
+    if (strcmp(req->headers.path, "/") == 0) {
+        body = base_read_whole_file(HTML_INDEX_FILE);
+    } else {
+        body = base_read_whole_file(req->headers.path + 1);
+    }
+
+    HttpStatusCode status_code = body ? STATUS_OK : STATUS_NOT_FOUND;
+
+    HttpResponse res = http_res_new(status_code, body, ht_make(NULL, NULL, 0));
     const char* res_str = http_res_encode(&res);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);
 
@@ -41,6 +51,7 @@ void* server_worker(void* socket) {
     close(sock);
     free((void*)res_str);
     http_res_free(&res);
+    http_req_free(req);
 
     return NULL;
 }
