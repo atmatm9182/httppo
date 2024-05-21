@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #ifndef BASEDEF
 #ifdef BASE_STATIC
@@ -253,8 +254,9 @@ BASEDEF ssize_t sv_find_sub(string_view sv, string_view substr) {
 
 BASEDEF ssize_t sv_find_sub_cstr(string_view sv, const char* substr) {
     size_t substr_len = strlen(substr);
+    ssize_t len = sv.size - substr_len + 1;
 
-    for (ssize_t i = 0; i < sv.size - substr_len + 1; i++) {
+    for (ssize_t i = 0; i < len; i++) {
         size_t saved_i = i;
 
         for (size_t j = 0; j < substr_len; j++) {

@@ -92,6 +92,9 @@ void server(ThreadPool* thread_pool) {
 }
 
 int main(int argc, char* argv[]) {
+    (void)argc;
+    (void)argv;
+
     int nprocs = sysconf(_SC_NPROCESSORS_CONF);
     ThreadPool thread_pool = threadpool_init(nprocs);
 

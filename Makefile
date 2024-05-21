@@ -5,7 +5,7 @@ SOURCES = src/main.c src/thread_pool.c src/protocol.c
 SOURCES_OBJS = $(SOURCES:.c=.o)
 COMPILED_OBJS = $(addprefix $(BUILD_DIR)/,$(notdir $(SOURCES_OBJS)))
 
-CFLAGS += -g -Og -Wall -Wextra -pedantic
+CFLAGS +=  -std=c11 -D_POSIX_C_SOURCE=200809L -g -Og -Wall -Wextra -pedantic
 
 .PHONY: clean
 

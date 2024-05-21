@@ -118,11 +118,11 @@ static HttpRequestHeaders http_req_headers_parse(string_view string) {
     string = sv_slice_end(string, i);
 
     while (i < orig_len) {
-        size_t line_end = sv_find_sub_cstr(string, "\r\n");
-        size_t line_len = line_end == -1 ? string.size : line_end;
+        ssize_t line_end = sv_find_sub_cstr(string, "\r\n");
+        size_t line_len = line_end == -1 ? string.size : (size_t)line_end;
 
         string_view line = sv_slice(string, 0, line_len);
-        size_t kv_sep_idx = sv_find(line, ':');
+        ssize_t kv_sep_idx = sv_find(line, ':');
         if (kv_sep_idx == -1) goto fail;
 
         string_view key = sv_slice(line, 0, kv_sep_idx);
