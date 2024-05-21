@@ -1,7 +1,8 @@
 #pragma once
 
-#include "base.h"
 #include <threads.h>
+
+#include "base.h"
 
 typedef struct {
     const char* method;
@@ -28,7 +29,11 @@ typedef struct {
     hash_table headers;
 } HttpResponse;
 
-typedef enum { HTTP_ERR_NONE } HttpRequestParseError;
+typedef enum {
+    HTTP_ERR_NONE,
+    HTTP_ERR_MALFORMED,
+    HTTP_ERR_MALFORMED_HEADERS,
+} HttpRequestParseError;
 
 extern thread_local HttpRequestParseError http_req_parse_error;
 

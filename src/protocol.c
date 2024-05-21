@@ -95,19 +95,19 @@ static HttpRequestHeaders http_req_headers_parse(string_view string) {
 
     result.headers = ht_make(hash_func, eq_func, 10);
     ssize_t split_idx = sv_find_sub_cstr(string, "\r\n");
-    assert(split_idx != -1);
+    if (split_idx == -1) goto fail;
 
     size_t i = split_idx + 2;
 
     string_view first_line = sv_slice(string, 0, split_idx);
     split_idx = sv_find(first_line, ' ');
-    assert(split_idx != -1);
+    if (split_idx == -1) goto fail;
 
     result.method = sv_dup(sv_slice(first_line, 0, split_idx));
     first_line = sv_slice_end(first_line, split_idx + 1);
 
     split_idx = sv_find(first_line, ' ');
-    assert(split_idx != -1);
+    if (split_idx == -1) goto fail;
 
     result.path = sv_dup(sv_slice(first_line, 0, split_idx));
     first_line = sv_slice_end(first_line, split_idx + 1);
@@ -123,7 +123,7 @@ static HttpRequestHeaders http_req_headers_parse(string_view string) {
 
         string_view line = sv_slice(string, 0, line_len);
         size_t kv_sep_idx = sv_find(line, ':');
-        assert(kv_sep_idx != -1);
+        if (kv_sep_idx == -1) goto fail;
 
         string_view key = sv_slice(line, 0, kv_sep_idx);
         string_view value = sv_slice_end(line, kv_sep_idx + 1);
@@ -135,11 +135,18 @@ static HttpRequestHeaders http_req_headers_parse(string_view string) {
     }
 
     return result;
+
+fail:
+    http_req_parse_error = HTTP_ERR_MALFORMED_HEADERS;
+    return (HttpRequestHeaders){0};
 }
 
 HttpRequest* http_req_parse(string_view string) {
     ssize_t split_idx = sv_find_sub_cstr(string, "\r\n\r\n");
-    assert(split_idx != -1);
+    if (split_idx == -1) {
+        http_req_parse_error = HTTP_ERR_MALFORMED;
+        return NULL;
+    }
 
     string_view header_string = sv_slice(string, 0, split_idx);
     HttpRequestHeaders headers = http_req_headers_parse(header_string);
