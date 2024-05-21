@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-void http_req_headers_print(HttpRequestHeaders const* headers) {
+static void http_req_headers_print(HttpRequestHeaders const* headers) {
     printf("method: %s, path: %s, version: %s\n", headers->method, headers->path,
            headers->http_version);
     printf("headers:\n");
@@ -15,7 +15,7 @@ void http_req_print(HttpRequest const* req) {
     printf("body: %s\n", req->body);
 }
 
-void http_req_headers_free(HttpRequestHeaders* headers) {
+static void http_req_headers_free(HttpRequestHeaders* headers) {
     free((void*)headers->method);
     free((void*)headers->path);
     free((void*)headers->http_version);
@@ -39,7 +39,7 @@ HttpResponse http_res_new(HttpStatusCode status_code, const char* body, hash_tab
         .body = body, .status_code = status_code, .headers = headers, .http_version = "HTTP/1.1"};
 }
 
-int http_res_headers_encode(HttpResponse const* res, char* buf) {
+static int http_res_headers_encode(HttpResponse const* res, char* buf) {
     int written = 0;
     HT_ITER(&res->headers, {
         written += sprintf(buf + written, "%s: %s\r\n", (const char*)kv.key, (const char*)kv.value);
@@ -74,24 +74,23 @@ void http_res_free(HttpResponse* res) {
     }
 }
 
-// TODO: use a better hash function
 uint64_t hash_func(void const* ptr) {
     const char* str = (const char*)ptr;
-    uint64_t sum = 0;
-    while (*str) {
-        sum += *str;
-        str++;
-    }
-    return sum;
+    uint64_t hash = 5381;
+    char c;
+
+    while ((c = *str++)) hash = ((hash << 5) + hash) + c;
+
+    return hash;
 }
 
-bool eq_func(void const* lhs, void const* rhs) {
+static bool eq_func(void const* lhs, void const* rhs) {
     return strcmp((const char*)lhs, (const char*)rhs) == 0;
 }
 
-HttpRequestHeadersParseError http_req_headers_parse_error;
+thread_local HttpRequestParseError http_req_parse_error;
 
-HttpRequestHeaders http_req_headers_parse(string_view string) {
+static HttpRequestHeaders http_req_headers_parse(string_view string) {
     HttpRequestHeaders result;
 
     result.headers = ht_make(hash_func, eq_func, 10);
@@ -144,7 +143,7 @@ HttpRequest* http_req_parse(string_view string) {
 
     string_view header_string = sv_slice(string, 0, split_idx);
     HttpRequestHeaders headers = http_req_headers_parse(header_string);
-    if (http_req_headers_parse_error != HRHPE_NONE) {
+    if (http_req_parse_error != HTTP_ERR_NONE) {
         return NULL;
     }
 

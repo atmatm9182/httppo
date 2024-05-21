@@ -1,6 +1,7 @@
 #pragma once
 
 #include "base.h"
+#include <threads.h>
 
 typedef struct {
     const char* method;
@@ -27,7 +28,9 @@ typedef struct {
     hash_table headers;
 } HttpResponse;
 
-typedef enum { HRHPE_NONE } HttpRequestHeadersParseError;
+typedef enum { HTTP_ERR_NONE } HttpRequestParseError;
+
+extern thread_local HttpRequestParseError http_req_parse_error;
 
 static inline const char* status_str(HttpStatusCode status_code) {
     switch (status_code) {

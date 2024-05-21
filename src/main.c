@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// ORDER MATTERS HERE!
+// NOTE: ORDER MATTERS HERE!
 #define BASE_IMPLEMENTATION
 #include "base.h"
 #include "protocol.h"
