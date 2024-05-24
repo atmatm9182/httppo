@@ -14,7 +14,7 @@
 #include "protocol.h"
 #include "thread_pool.h"
 
-#define PORT "6969"
+#include "config.h"
 
 #define HTML_INDEX_FILE "index.html"
 
@@ -22,11 +22,10 @@ void* server_worker(void* socket) {
     int sock = (int)(uintptr_t)socket;
 
     char msg_buf[1024];
+
     int nread = recv(sock, msg_buf, sizeof(msg_buf), 0);
     assert(nread != -1 && nread != 1024);
     msg_buf[nread] = '\0';
-
-    printf("got message from client: %s\n", msg_buf);
 
     HttpRequest* req = http_req_parse(sv_make(msg_buf, nread));
     assert(req);
@@ -46,8 +45,6 @@ void* server_worker(void* socket) {
     const char* res_str = http_res_encode(&res);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);
 
-    printf("sending response: %s\n", res_str);
-
     close(sock);
     free((void*)res_str);
     http_res_free(&res);
@@ -56,7 +53,7 @@ void* server_worker(void* socket) {
     return NULL;
 }
 
-void server(ThreadPool* thread_pool) {
+void server(ThreadPool* thread_pool, const char* port) {
     struct addrinfo hints = {0};
     struct addrinfo* server_addr;
 
@@ -64,7 +61,7 @@ void server(ThreadPool* thread_pool) {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    int status = getaddrinfo(NULL, PORT, &hints, &server_addr);
+    int status = getaddrinfo(NULL, port, &hints, &server_addr);
     if (status != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
         exit(1);
@@ -92,13 +89,16 @@ void server(ThreadPool* thread_pool) {
 }
 
 int main(int argc, char* argv[]) {
-    (void)argc;
-    (void)argv;
+    HttppoConfig config;
+    int status = httppo_config_parse(argc, argv, &config);
+    assert(status == 0);
 
-    int nprocs = sysconf(_SC_NPROCESSORS_CONF);
-    ThreadPool thread_pool = threadpool_init(nprocs);
+    ThreadPool thread_pool = threadpool_init(config.threads);
 
-    server(&thread_pool);
+    char port[6];
+    sprintf(port, "%d", config.port);
+
+    server(&thread_pool, port);
     threadpool_free(&thread_pool);
 
     return 0;
