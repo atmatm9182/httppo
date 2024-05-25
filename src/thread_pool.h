@@ -11,16 +11,12 @@ typedef struct {
     void* arg;
 } WorkerData;
 
-
-typedef struct WTRNode {
-    WorkerData* data;
-    struct WTRNode* next;
-} WTRNode;
-
 typedef struct {
-    WTRNode* head;
-    WTRNode* tail;
+    WorkerData** items;
     atomic_size_t size;
+    atomic_size_t cap;
+    atomic_size_t write;
+    atomic_size_t read;
 
     pthread_mutex_t mutex;
 } WorkerThreadRequestQueue;

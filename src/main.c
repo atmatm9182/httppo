@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -11,10 +12,9 @@
 // NOTE: ORDER MATTERS HERE!
 #define BASE_IMPLEMENTATION
 #include "base.h"
+#include "config.h"
 #include "protocol.h"
 #include "thread_pool.h"
-
-#include "config.h"
 
 #define HTML_INDEX_FILE "index.html"
 
@@ -24,7 +24,12 @@ void* server_worker(void* socket) {
     char msg_buf[1024];
 
     int nread = recv(sock, msg_buf, sizeof(msg_buf), 0);
-    assert(nread != -1 && nread != 1024);
+    if (nread == -1) {
+        fprintf(stderr, "ERROR: could not read from socket %d: %s\n", sock, strerror(errno));
+        exit(1);
+    }
+
+    assert(nread != 1024);
     msg_buf[nread] = '\0';
 
     HttpRequest* req = http_req_parse(sv_make(msg_buf, nread));
@@ -45,7 +50,11 @@ void* server_worker(void* socket) {
     const char* res_str = http_res_encode(&res);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);
 
-    close(sock);
+    if (close(sock) == -1) {
+        fprintf(stderr, "ERROR: could not close socket %d: %s\n", sock, strerror(errno));
+        exit(1);
+    }
+
     free((void*)res_str);
     http_res_free(&res);
     http_req_free(req);
@@ -77,9 +86,10 @@ void server(ThreadPool* thread_pool, const char* port) {
 
     while (true) {
         int client_sock = accept(sock, (struct sockaddr*)&client_addr, &client_addr_size);
-        assert(client_sock != -1);
-
-        printf("accepted\n");
+        if (client_sock == -1) {
+            fprintf(stderr, "ERROR: could not accept the connection: %s\n", strerror(errno));
+            exit(1);
+        }
 
         threadpool_schedule(thread_pool, server_worker, (void*)(uintptr_t)client_sock);
     }
@@ -91,7 +101,7 @@ void server(ThreadPool* thread_pool, const char* port) {
 int main(int argc, char* argv[]) {
     HttppoConfig config;
     int status = httppo_config_parse(argc, argv, &config);
-    assert(status == 0);
+    assert(status == 0);  // TODO: handle error
 
     ThreadPool thread_pool = threadpool_init(config.threads);
 

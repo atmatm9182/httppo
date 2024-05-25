@@ -9,51 +9,36 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static WTRNode* wtrnode_create(WorkerData* data) {
-    WTRNode* node = malloc(sizeof(WTRNode));
-    node->data = data;
-    node->next = NULL;
-    return node;
-}
+#define HTTPO_WTRQ_CAP 32
 
-static void wtrnode_free(WTRNode* node) {
-    free(node);
-}
-
-static void wtrq_enqueue(WorkerThreadRequestQueue* queue, WorkerData* data) {
-    assert(pthread_mutex_lock(&queue->mutex) == 0);
-
-    WTRNode* node = wtrnode_create(data);
-    if (atomic_load(&queue->size) == 0) {
-        queue->head = node;
-        queue->tail = node;
-        queue->size++;
-
-        assert(pthread_mutex_unlock(&queue->mutex) == 0);
-        return;
+static bool wtrq_enqueue(WorkerThreadRequestQueue* queue, WorkerData* data) {
+    if (queue->size != 0 && queue->write == queue->read) {
+        return false;
     }
 
-    queue->tail->next = node;
-    queue->tail = node;
+    assert(pthread_mutex_lock(&queue->mutex) == 0);
+
+    if (queue->size == queue->cap) {
+        queue->cap *= 2;
+        queue->items = realloc(queue->items, sizeof(WorkerData*) * queue->cap);
+    }
+
+    queue->items[queue->write] = data;
+    queue->write = (queue->write + 1) % queue->cap;
     queue->size++;
 
     assert(pthread_mutex_unlock(&queue->mutex) == 0);
+    return true;
 }
 
 static WorkerData* wtrq_dequeue(WorkerThreadRequestQueue* queue) {
     assert(pthread_mutex_lock(&queue->mutex) == 0);
     assert(atomic_load(&queue->size) != 0);
 
-    WTRNode* head = queue->head;
-    queue->head = head->next;
-    if (atomic_load(&queue->size) == 1) {
-        queue->tail = head->next;
-    }
-
-    WorkerData* result = head->data;
-
+    WorkerData* result = queue->items[queue->read];
+    queue->read = (queue->read + 1) % queue->cap;
     queue->size--;
-    wtrnode_free(head);
+
     assert(pthread_mutex_unlock(&queue->mutex) == 0);
     return result;
 }
@@ -73,6 +58,7 @@ static void* threadpool_worker(void* worker_data) {
 
         WorkerData* data = wtrq_dequeue(queue);
         data->proc(data->arg);
+        free(data);
     }
 
     return NULL;
@@ -84,6 +70,8 @@ ThreadPool threadpool_init(size_t count) {
         WorkerInitData* data = malloc(sizeof(WorkerInitData));
         data->thread = &threads[i];
         WorkerThreadRequestQueue queue = {0};
+        queue.cap = HTTPO_WTRQ_CAP;
+        queue.items = malloc(sizeof(WorkerData*) * queue.cap);
 
         pthread_mutexattr_t muattr;
         pthread_mutexattr_init(&muattr);
@@ -118,7 +106,8 @@ void threadpool_schedule(ThreadPool* thread_pool, WorkerProc proc, void* arg) {
     data->proc = proc;
     data->arg = arg;
 
-    wtrq_enqueue(&thread->queue, data);
+    while (!wtrq_enqueue(&thread->queue, data)) {
+    }  // wait until the queue has free space
 }
 
 void threadpool_free(ThreadPool const* thread_pool) {
