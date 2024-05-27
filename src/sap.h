@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "base.h"
+
 #define SAP_MAX_OPT_COUNT 32
 #define SAP_MAX_ARGV_COUNT 32
 
@@ -39,9 +41,15 @@ typedef struct {
 SapOption* sap_get_long(SapParser const* parser, const char* name);
 SapOption* sap_get_short(SapParser const* parser, char name);
 
+char* sap_generate_help_message(SapParser const* parser);
+
 int sap_parse(SapParser* parser, int argc, char* argv[]);
 
 #ifdef SAP_IMPLEMENTATION
+#ifndef BASE_IMPLEMENTATION
+#error \
+    "You need to define both 'BASE_IMPLEMENTATION' and 'SAP_IMPLEMENTATION' to use the SAP implementation."
+#endif  // BASE_IMPLEMENTATION
 
 int _sap_parse_for_type(const char* arg, SapOptionType type, void** value) {
     switch (type) {
@@ -186,6 +194,35 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
     }
 
     return 0;
+}
+
+char* sap_generate_help_message(SapParser const* parser) {
+    size_t max_len = 0;
+    for (size_t i = 0; i < parser->options_count; i++) {
+        size_t opt_len = strlen(parser->options[i].long_name);
+        if (opt_len > max_len) {
+            max_len = opt_len;
+        }
+    }
+
+    string_builder sb = sb_new(1024);
+    for (size_t i = 0; i < parser->options_count; i++) {
+        SapOption* opt = &parser->options[i];
+        sb_sprintf(&sb, "  %c, %s ", opt->short_name, opt->long_name);
+
+        size_t count = max_len - strlen(opt->long_name);
+        for (size_t j = 0; j < count; j++) {
+            sb_push(&sb, ' ');
+        }
+
+        sb_sprintf(&sb, "- %s", opt->description);
+        if (opt->required) {
+            sb_sprintf(&sb, " (required)");
+        }
+        sb_push(&sb, '\n');
+    }
+
+    return sb_to_cstr(&sb);
 }
 
 #endif  // SAP_IMPLEMENTATION

@@ -1,22 +1,25 @@
-#include "config.h"
-
 #include <limits.h>
 #include <stdint.h>
 #include <unistd.h>
 
 #define SAP_IMPLEMENTATION
+#define BASE_IMPLEMENTATION
+#define BASE_STATIC
+#include "config.h"
 #include "sap.h"
 
 #define MAX_PORT_NUMBER 65535
 
-#define DIE(s, ...) do { \
+#define DIE(s, ...)                        \
+    do {                                   \
         fprintf(stderr, (s), __VA_ARGS__); \
-        exit(1); \
+        exit(1);                           \
     } while (0)
 
 static SapOption opts[] = {
-    {"threads", 't', "number of threads to use", SAP_INT, 0},
-    {"port", 'p', "port number", SAP_INT, 0},
+    {"threads", 't', "specify the number of threads to use", SAP_INT, 0},
+    {"port", 'p', "specify the port number", SAP_INT, 0},
+    {"help", 'h', "print the help message", SAP_BOOL, 0},
 };
 
 HttppoConfig httppo_config_parse(int argc, char** argv) {
@@ -28,11 +31,19 @@ HttppoConfig httppo_config_parse(int argc, char** argv) {
         DIE("argument parser error: %s", parser.err);
     }
 
+    SapOption* help_opt = sap_get_short(&parser, 'h');
+    if (help_opt->value) {
+        char* help_msg = sap_generate_help_message(&parser);
+        printf("%s flags and usage:\n\n%s", argv[0], help_msg);
+        exit(0);
+    }
+
     SapOption* topt = sap_get_short(&parser, 't');
     uintptr_t nthreads = (uintptr_t)topt->value;
-    if (nthreads == 0) {
+    if (topt->parsed && nthreads == 0) {
         DIE("cannot start the server with %lu threads", nthreads);
     }
+
     config.threads = nthreads;
     int nproc = sysconf(_SC_NPROCESSORS_CONF);
 

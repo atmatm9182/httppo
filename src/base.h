@@ -141,13 +141,17 @@ typedef struct {
 BASEDEF string_builder sb_new(size_t cap);
 BASEDEF void sb_destroy(string_builder* sb);
 BASEDEF void sb_push_cstr(string_builder* sb, const char* str);
+BASEDEF void sb_sprintf(string_builder* sb, const char* fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 BASEDEF char* sb_to_cstr(string_builder* sb);
+BASEDEF void sb_push(string_builder* sb, char c);
 
 // MISC
-char* base_read_whole_file(const char* filepath);
+BASEDEF char* base_read_whole_file(const char* filepath);
 
 #ifdef BASE_IMPLEMENTATION
 
+#include <stdarg.h>
 #include <stdio.h>
 
 // STRING VIEW
@@ -280,9 +284,13 @@ BASEDEF string_builder sb_new(size_t cap) {
     return sb;
 }
 
+BASEDEF void sb_push(string_builder* sb, char c) {
+    DA_ADD(sb, c);
+}
+
 BASEDEF void sb_push_cstr(string_builder* sb, const char* str) {
     while (*str) {
-        DA_ADD(sb, *str++);
+        sb_push(sb, *str++);
     }
 }
 
@@ -293,6 +301,24 @@ BASEDEF char* sb_to_cstr(string_builder* sb) {
 
 BASEDEF void sb_destroy(string_builder* sb) {
     DA_FREE(sb);
+}
+
+BASEDEF void sb_sprintf(string_builder* sb, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int count = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+
+    while (sb->cap - sb->len < count) {
+        DA_GROW(sb);
+    }
+
+    va_start(args, fmt);
+    vsnprintf(sb->items + sb->len, count + 1, fmt,
+              args);  // NOTE: add 1 here for the null terminator, but do not add it to the length
+                      // of the string builder
+    va_end(args);
+    sb->len += count;
 }
 
 // HASH TABLE
@@ -371,7 +397,7 @@ BASEDEF void ht_destroy(hash_table* ht) {
 }
 
 // MISC
-char* base_read_whole_file(const char* filepath) {
+BASEDEF char* base_read_whole_file(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f) {
         return NULL;
