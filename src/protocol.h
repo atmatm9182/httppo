@@ -31,7 +31,7 @@ typedef struct {
 
 typedef enum {
     HTTP_ERR_NONE,
-    HTTP_ERR_MALFORMED,
+    HTTP_ERR_MALFORMED_BODY,
     HTTP_ERR_MALFORMED_HEADERS,
 } HttpRequestParseError;
 

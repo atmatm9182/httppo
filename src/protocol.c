@@ -144,7 +144,7 @@ fail:
 HttpRequest* http_req_parse(string_view string) {
     ssize_t split_idx = sv_find_sub_cstr(string, "\r\n\r\n");
     if (split_idx == -1) {
-        http_req_parse_error = HTTP_ERR_MALFORMED;
+        http_req_parse_error = HTTP_ERR_MALFORMED_BODY;
         return NULL;
     }
 
