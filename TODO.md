@@ -1,0 +1,7 @@
+- [X] Static file serving
+- [X] Replace threadpool queue by a circular buffer queue
+- [-] Configuration flags
+- [ ] Configuration files
+- [ ] Less allocations
+- [ ] Memory pooling
+- [ ] Make it **fast**
