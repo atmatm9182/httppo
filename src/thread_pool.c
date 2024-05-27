@@ -107,7 +107,8 @@ void threadpool_schedule(ThreadPool* thread_pool, WorkerProc proc, void* arg) {
     data->arg = arg;
 
     while (!wtrq_enqueue(&thread->queue, data)) {
-    }  // wait until the queue has free space
+        // wait until the queue has free space
+    }
 }
 
 void threadpool_free(ThreadPool const* thread_pool) {

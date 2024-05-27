@@ -2,9 +2,9 @@
 #define SAP_INCLUDE_
 
 #include <assert.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 #define SAP_MAX_OPT_COUNT 32
 #define SAP_MAX_ARGV_COUNT 32
@@ -33,6 +33,7 @@ typedef struct {
     int options_count;
     const char* argv[SAP_MAX_ARGV_COUNT];
     int argv_count;
+    char err[128];
 } SapParser;
 
 SapOption* sap_get_long(SapParser const* parser, const char* name);
@@ -54,10 +55,10 @@ int _sap_parse_for_type(const char* arg, SapOptionType type, void** value) {
                 return 0;
             }
 
-        return 1;
+            return 1;
         case SAP_STRING:
-        *value = (void*)arg;
-        return 0;
+            *value = (void*)arg;
+            return 0;
 
         case SAP_INT: {
             char* endptr;
@@ -141,12 +142,16 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
                         break;
                     }
 
-                    if (++i == argc) return 1; // no value for the flag
+                    if (++i == argc) {
+                        sprintf(parser->err, "no value provided for flag '%s'", raw->long_name);
+                        return 1;
+                    }
 
                     arg = argv[i];
 
                     if (_sap_parse_for_type(arg, raw->type, &raw->value) != 0) {
-                        return 2; // could not parse the value
+                        sprintf(parser->err, "wrong type of value for flag '%s'", raw->long_name);
+                        return 1;
                     }
 
                     raw->parsed = 1;
@@ -155,7 +160,8 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
             }
 
             if (j >= parser->options_count) {
-                return 3; // unrecognized option
+                sprintf(parser->err, "unrecognized flag '%s'", arg);
+                return 1;
             }
 
             continue;
@@ -174,13 +180,14 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
         }
 
         if (raw->required && !raw->parsed) {
-            return 4; // required option not present
+            sprintf(parser->err, "required option '%s' is not present", raw->long_name);
+            return 1;
         }
     }
 
     return 0;
 }
 
-#endif // SAP_IMPLEMENTATION
+#endif  // SAP_IMPLEMENTATION
 
-#endif // SAP_INCLUDE_
+#endif  // SAP_INCLUDE_

@@ -2,7 +2,6 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <string.h>
 #include <unistd.h>
 
 #define SAP_IMPLEMENTATION
@@ -10,38 +9,47 @@
 
 #define MAX_PORT_NUMBER 65535
 
+#define DIE(s, ...) do { \
+        fprintf(stderr, (s), __VA_ARGS__); \
+        exit(1); \
+    } while (0)
+
 static SapOption opts[] = {
     {"threads", 't', "number of threads to use", SAP_INT, 0},
     {"port", 'p', "port number", SAP_INT, 0},
 };
 
-int httppo_config_parse(int argc, char** argv, HttppoConfig* config) {
-    memset(config, 0, sizeof(HttppoConfig));
+HttppoConfig httppo_config_parse(int argc, char** argv) {
+    HttppoConfig config;
 
     SapParser parser = {.options = opts, .options_count = sizeof(opts) / sizeof(opts[0])};
     int status = sap_parse(&parser, argc, argv);
     if (status != 0) {
-        return status;
+        DIE("argument parser error: %s", parser.err);
     }
 
     SapOption* topt = sap_get_short(&parser, 't');
-    config->threads = (uintptr_t)topt->value;
+    uintptr_t nthreads = (uintptr_t)topt->value;
+    if (nthreads == 0) {
+        DIE("cannot start the server with %lu threads", nthreads);
+    }
+    config.threads = nthreads;
     int nproc = sysconf(_SC_NPROCESSORS_CONF);
 
-    if (!topt->parsed || config->threads > nproc) {
-        config->threads = nproc;
+    if (!topt->parsed || config.threads > nproc) {
+        config.threads = nproc;
     }
 
     SapOption* popt = sap_get_short(&parser, 'p');
-    config->port = (uintptr_t)popt->value;
+    config.port = (uintptr_t)popt->value;
 
     if (!popt->parsed) {
-        config->port = HTTPPO_DEFAULT_PORTI;
+        config.port = HTTPPO_DEFAULT_PORTI;
     }
 
-    if (config->port > MAX_PORT_NUMBER) {
-        return 1;  // the port number is invalid
+    if (config.port > MAX_PORT_NUMBER) {
+        DIE("the port number '%d' is not valid", config.port);
     }
 
-    return 0;
+    return config;
 }

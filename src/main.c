@@ -99,9 +99,7 @@ void server(ThreadPool* thread_pool, const char* port) {
 }
 
 int main(int argc, char* argv[]) {
-    HttppoConfig config;
-    int status = httppo_config_parse(argc, argv, &config);
-    assert(status == 0);  // TODO: handle error
+    HttppoConfig config = httppo_config_parse(argc, argv);
 
     ThreadPool thread_pool = threadpool_init(config.threads);
 

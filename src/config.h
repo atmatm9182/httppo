@@ -8,4 +8,4 @@ typedef struct {
     int port;
 } HttppoConfig;
 
-int httppo_config_parse(int argc, char** argv, HttppoConfig* config);
+HttppoConfig httppo_config_parse(int argc, char** argv);
