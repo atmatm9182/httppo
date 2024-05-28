@@ -145,6 +145,7 @@ BASEDEF void sb_sprintf(string_builder* sb, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 BASEDEF char* sb_to_cstr(string_builder* sb);
 BASEDEF void sb_push(string_builder* sb, char c);
+BASEDEF void sb_clear(string_builder* sb);
 
 // MISC
 BASEDEF char* base_read_whole_file(const char* filepath);
@@ -319,6 +320,11 @@ BASEDEF void sb_sprintf(string_builder* sb, const char* fmt, ...) {
                       // of the string builder
     va_end(args);
     sb->len += count;
+}
+
+BASEDEF void sb_clear(string_builder* sb) {
+    memset(sb->items, 0, sb->len * sizeof(sb->items[0]));
+    sb->len = 0;
 }
 
 // HASH TABLE

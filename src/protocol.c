@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "base.h"
+
 static void http_req_headers_print(HttpRequestHeaders const* headers) {
     printf("method: %s, path: %s, version: %s\n", headers->method, headers->path,
            headers->http_version);
@@ -65,6 +67,23 @@ char* http_res_encode(HttpResponse const* res) {
     }
 
     return buf;
+}
+
+static void http_res_headers_encode_sb(hash_table headers, string_builder* sb) {
+    HT_ITER(&headers,
+            { sb_sprintf(sb, "%s: %s\r\n", (const char*)kv.key, (const char*)kv.value); });
+
+    sb_push_cstr(sb, "\r\n");
+}
+
+void http_res_encode_sb(HttpResponse const* res, string_builder* sb) {
+    sb_sprintf(sb, "%s %d %s\r\n", res->http_version, res->status_code,
+               status_str(res->status_code));
+    http_res_headers_encode_sb(res->headers, sb);
+
+    if (res->body) {
+        sb_push_cstr(sb, res->body);
+    }
 }
 
 void http_res_free(HttpResponse* res) {

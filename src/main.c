@@ -18,7 +18,15 @@
 
 #define HTML_INDEX_FILE "index.html"
 
+static thread_local string_builder sb = {0};
+static bool is_sb_init = false;
+
 void* server_worker(void* socket) {
+    if (!is_sb_init) {
+        sb = sb_new(1024);
+        is_sb_init = true;
+    }
+
     int sock = (int)(uintptr_t)socket;
 
     char msg_buf[1024];
@@ -47,7 +55,8 @@ void* server_worker(void* socket) {
     HttpStatusCode status_code = body ? STATUS_OK : STATUS_NOT_FOUND;
 
     HttpResponse res = http_res_new(status_code, body, ht_make(NULL, NULL, 0));
-    const char* res_str = http_res_encode(&res);
+    http_res_encode_sb(&res, &sb);
+    const char* res_str = sb_to_cstr(&sb);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);
 
     if (close(sock) == -1) {
@@ -55,7 +64,7 @@ void* server_worker(void* socket) {
         exit(1);
     }
 
-    free((void*)res_str);
+    sb_clear(&sb);
     http_res_free(&res);
     http_req_free(req);
 

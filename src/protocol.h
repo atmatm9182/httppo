@@ -56,4 +56,5 @@ void http_req_free(HttpRequest* req);
 
 HttpResponse http_res_new(HttpStatusCode status_code, const char* body, hash_table headers);
 char* http_res_encode(HttpResponse const* res);
+void http_res_encode_sb(HttpResponse const* res, string_builder* sb);
 void http_res_free(HttpResponse* res);
