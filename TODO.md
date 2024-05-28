@@ -5,3 +5,5 @@
 - [ ] Less allocations
 - [ ] Memory pooling
 - [ ] Make it **fast**
+- [ ] File caching
+- [ ] Responding with headers

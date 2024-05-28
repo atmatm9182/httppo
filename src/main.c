@@ -45,7 +45,7 @@ void* server_worker(void* socket) {
 
     http_req_print(req);
 
-    const char* body = NULL;
+    char* body = NULL;
     if (strcmp(req->headers.path, "/") == 0) {
         body = base_read_whole_file(HTML_INDEX_FILE);
     } else {

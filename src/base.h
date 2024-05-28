@@ -419,6 +419,8 @@ BASEDEF char* base_read_whole_file(const char* filepath) {
     char* buf = (char*)BASE_ALLOC(sizeof(char) * (fsize + 1));
     fread(buf, fsize, 1, f);
     buf[fsize] = '\0';
+
+    fclose(f);
     return buf;
 }
 
