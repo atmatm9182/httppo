@@ -56,7 +56,7 @@ Arena arena_new(size_t cap) {
 }
 
 void arena_free(Arena* arena) {
-    free(arena->memory);
+    arena->offset = 0;
 }
 
 #endif  // ARENA_IMPLEMENTATION
