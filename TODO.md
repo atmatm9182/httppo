@@ -2,8 +2,8 @@
 - [X] Replace threadpool queue by a circular buffer queue
 - [-] Configuration flags
 - [ ] Configuration files
-- [ ] Less allocations
-- [ ] Memory pooling
+- [X] Less allocations
+- [X] Memory pooling
 - [ ] Make it **fast**
 - [ ] File caching
 - [ ] Responding with headers
