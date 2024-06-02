@@ -21,13 +21,13 @@
 #endif  // BASE_ALLOC
 
 // DYNAMIC ARRAYS
-#define DA_INIT(arr, l, c)                                                                   \
-    do {                                                                                     \
-        __typeof__(c) _cap = c ? c : 1;                                                      \
-        (arr)->items = (__typeof__((arr)->items[0])*)malloc(sizeof((arr)->items[0]) * _cap); \
-        (arr)->cap = _cap;                                                                   \
-        (arr)->len = l;                                                                      \
-        memset((arr)->items, 0, l * sizeof((arr)->items[0]));                                \
+#define DA_INIT(arr, l, c)                                                                       \
+    do {                                                                                         \
+        __typeof__(c) _cap = c ? c : 1;                                                          \
+        (arr)->items = (__typeof__((arr)->items[0])*)BASE_ALLOC(sizeof((arr)->items[0]) * _cap); \
+        (arr)->cap = _cap;                                                                       \
+        (arr)->len = l;                                                                          \
+        memset((arr)->items, 0, l * sizeof((arr)->items[0]));                                    \
     } while (0)
 
 #define DA_INIT_ZEROED(arr, c) \

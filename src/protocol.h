@@ -2,6 +2,7 @@
 
 #include <threads.h>
 
+#include "arena.h"
 #include "base.h"
 
 typedef struct {
@@ -50,11 +51,11 @@ static inline const char* status_str(HttpStatusCode status_code) {
     }
 }
 
-HttpRequest* http_req_parse(string_view sv);
+HttpRequest* http_req_parse(string_view sv, Arena* arena);
 void http_req_print(HttpRequest const* req);
 void http_req_free(HttpRequest* req);
 
 HttpResponse http_res_new(HttpStatusCode status_code, const char* body, hash_table headers);
-char* http_res_encode(HttpResponse const* res);
+char* http_res_encode(HttpResponse const* res, Arena* arena);
 void http_res_encode_sb(HttpResponse const* res, string_builder* sb);
 void http_res_free(HttpResponse* res);

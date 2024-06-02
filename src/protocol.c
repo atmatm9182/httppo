@@ -33,7 +33,6 @@ static void http_req_headers_free(HttpRequestHeaders* headers) {
 void http_req_free(HttpRequest* req) {
     http_req_headers_free(&req->headers);
     free((void*)req->body);
-    free(req);
 }
 
 HttpResponse http_res_new(HttpStatusCode status_code, const char* body, hash_table headers) {
@@ -52,11 +51,11 @@ static int http_res_headers_encode(HttpResponse const* res, char* buf) {
     return written;
 }
 
-char* http_res_encode(HttpResponse const* res) {
+char* http_res_encode(HttpResponse const* res, Arena* arena) {
     size_t body_len = res->body ? strlen(res->body) : 0;
     size_t size = body_len + 30 + res->headers.len * 30;
 
-    char* buf = malloc(size * sizeof(char) + 1);
+    char* buf = arena_alloc(arena, size * sizeof(char) + 1);
     int num_written = sprintf(buf, "%s %d %s\r\n", res->http_version, res->status_code,
                               status_str(res->status_code));
     assert(num_written != -1);
@@ -160,7 +159,7 @@ fail:
     return (HttpRequestHeaders){0};
 }
 
-HttpRequest* http_req_parse(string_view string) {
+HttpRequest* http_req_parse(string_view string, Arena* arena) {
     ssize_t split_idx = sv_find_sub_cstr(string, "\r\n\r\n");
     if (split_idx == -1) {
         http_req_parse_error = HTTP_ERR_MALFORMED_BODY;
@@ -173,7 +172,7 @@ HttpRequest* http_req_parse(string_view string) {
         return NULL;
     }
 
-    HttpRequest* result = malloc(sizeof(HttpRequest));
+    HttpRequest* result = arena_alloc(arena, sizeof(HttpRequest));
     result->headers = headers;
 
     string_view body_sv =

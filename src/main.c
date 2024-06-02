@@ -12,19 +12,27 @@
 // NOTE: ORDER MATTERS HERE!
 #define BASE_IMPLEMENTATION
 #include "base.h"
+
+#define ARENA_IMPLEMENTATION
+#include "arena.h"
+
 #include "config.h"
 #include "protocol.h"
 #include "thread_pool.h"
 
 #define HTML_INDEX_FILE "index.html"
 
-static thread_local string_builder sb = {0};
-static bool is_sb_init = false;
+#define INIT_ARENA_CAP 4096
+
+static thread_local Arena arena;
+static thread_local string_builder sb;
+static bool is_state_init = false;
 
 void* server_worker(void* socket) {
-    if (!is_sb_init) {
+    if (!is_state_init) {
         sb = sb_new(1024);
-        is_sb_init = true;
+        arena = arena_new(INIT_ARENA_CAP);
+        is_state_init = true;
     }
 
     int sock = (int)(uintptr_t)socket;
@@ -40,7 +48,7 @@ void* server_worker(void* socket) {
     assert(nread != 1024);
     msg_buf[nread] = '\0';
 
-    HttpRequest* req = http_req_parse(sv_make(msg_buf, nread));
+    HttpRequest* req = http_req_parse(sv_make(msg_buf, nread), &arena);
     assert(req);
 
     http_req_print(req);
@@ -64,6 +72,7 @@ void* server_worker(void* socket) {
         exit(1);
     }
 
+    arena_free(&arena);
     sb_clear(&sb);
     http_res_free(&res);
     http_req_free(req);
