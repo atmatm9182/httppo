@@ -4,12 +4,13 @@
 #include <stdio.h>
 
 #include "base.h"
+#include "hash.h"
 
 static void http_req_headers_print(HttpRequestHeaders const* headers) {
     printf("method: %s, path: %s, version: %s\n", headers->method, headers->path,
            headers->http_version);
     printf("headers:\n");
-    HT_ITER(&headers->headers, { printf("%s:%s\n", (const char*)kv.key, (const char*)kv.value); });
+    HT_ITER(headers->headers, { printf("%s:%s\n", (const char*)kv.key, (const char*)kv.value); });
 }
 
 void http_req_print(HttpRequest const* req) {
@@ -22,7 +23,7 @@ static void http_req_headers_free(HttpRequestHeaders* headers) {
     free((void*)headers->path);
     free((void*)headers->http_version);
 
-    HT_ITER(&headers->headers, {
+    HT_ITER(headers->headers, {
         free(kv.key);
         free(kv.value);
     });
@@ -42,7 +43,7 @@ HttpResponse http_res_new(HttpStatusCode status_code, const char* body, hash_tab
 
 static int http_res_headers_encode(HttpResponse const* res, char* buf) {
     int written = 0;
-    HT_ITER(&res->headers, {
+    HT_ITER(res->headers, {
         written += sprintf(buf + written, "%s: %s\r\n", (const char*)kv.key, (const char*)kv.value);
     });
 
@@ -69,8 +70,7 @@ char* http_res_encode(HttpResponse const* res, Arena* arena) {
 }
 
 static void http_res_headers_encode_sb(hash_table headers, string_builder* sb) {
-    HT_ITER(&headers,
-            { sb_sprintf(sb, "%s: %s\r\n", (const char*)kv.key, (const char*)kv.value); });
+    HT_ITER(headers, { sb_sprintf(sb, "%s: %s\r\n", (const char*)kv.key, (const char*)kv.value); });
 
     sb_push_cstr(sb, "\r\n");
 }
@@ -87,23 +87,6 @@ void http_res_encode_sb(HttpResponse const* res, string_builder* sb) {
 
 void http_res_free(HttpResponse* res) {
     ht_destroy(&res->headers);
-    if (res->body) {
-        free((void*)res->body);
-    }
-}
-
-uint64_t hash_func(void const* ptr) {
-    const char* str = (const char*)ptr;
-    uint64_t hash = 5381;
-    char c;
-
-    while ((c = *str++)) hash = ((hash << 5) + hash) + c;
-
-    return hash;
-}
-
-static bool eq_func(void const* lhs, void const* rhs) {
-    return strcmp((const char*)lhs, (const char*)rhs) == 0;
 }
 
 thread_local HttpRequestParseError http_req_parse_error;
@@ -111,7 +94,7 @@ thread_local HttpRequestParseError http_req_parse_error;
 static HttpRequestHeaders http_req_headers_parse(string_view string) {
     HttpRequestHeaders result;
 
-    result.headers = ht_make(hash_func, eq_func, 10);
+    result.headers = ht_make(hash_djb2, hash_str_eq, 10);
     ssize_t split_idx = sv_find_sub_cstr(string, "\r\n");
     if (split_idx == -1) goto fail;
 

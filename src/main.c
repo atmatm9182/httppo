@@ -15,18 +15,22 @@
 
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
-
 #include "config.h"
+#include "files.h"
 #include "protocol.h"
 #include "thread_pool.h"
 
 #define HTML_INDEX_FILE "index.html"
-
 #define INIT_ARENA_CAP 4096
+#define HTTPPO_FILES_CAP 23
 
+// shared state
+static HttppoFiles files;
+
+// thread-local state
 static thread_local Arena arena;
 static thread_local string_builder sb;
-static bool is_state_init = false;
+static thread_local bool is_state_init = false;
 
 void* server_worker(void* socket) {
     if (!is_state_init) {
@@ -53,16 +57,16 @@ void* server_worker(void* socket) {
 
     http_req_print(req);
 
-    char* body = NULL;
+    HttppoFile* file = NULL;
     if (strcmp(req->headers.path, "/") == 0) {
-        body = base_read_whole_file(HTML_INDEX_FILE);
+        file = httppo_files_get(&files, HTML_INDEX_FILE);
     } else {
-        body = base_read_whole_file(req->headers.path + 1);
+        file = httppo_files_get(&files, req->headers.path + 1);
     }
 
-    HttpStatusCode status_code = body ? STATUS_OK : STATUS_NOT_FOUND;
+    HttpStatusCode status_code = file ? STATUS_OK : STATUS_NOT_FOUND;
 
-    HttpResponse res = http_res_new(status_code, body, ht_make(NULL, NULL, 0));
+    HttpResponse res = http_res_new(status_code, file->contents, ht_make(NULL, NULL, 0));
     http_res_encode_sb(&res, &sb);
     const char* res_str = sb_to_cstr(&sb);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);
@@ -116,6 +120,10 @@ void server(ThreadPool* thread_pool, const char* port) {
     freeaddrinfo(server_addr);
 }
 
+static void init_state(void) {
+    files = httppo_files_new(HTTPPO_FILES_CAP);
+}
+
 int main(int argc, char* argv[]) {
     HttppoConfig config = httppo_config_parse(argc, argv);
 
@@ -123,6 +131,8 @@ int main(int argc, char* argv[]) {
 
     char port[6];
     sprintf(port, "%d", config.port);
+
+    init_state();
 
     server(&thread_pool, port);
     threadpool_free(&thread_pool);

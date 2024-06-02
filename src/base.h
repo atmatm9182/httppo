@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #ifndef BASEDEF
@@ -62,11 +63,19 @@
         free((arr)->items); \
     } while (0)
 
+#define DA_REMOVE(arr, idx)                                                                \
+    do {                                                                                   \
+        if ((idx) < (arr)->len) {                                                          \
+            memmove((arr)->items + idx, (arr)->items + idx + 1, (arr)->len - ((idx) + 1)); \
+            (arr)->len--;                                                                  \
+        }                                                                                  \
+    } while (0)
+
 // HASH TABLE
 #define HT_ITER(ht, body)                              \
     do {                                               \
-        for (size_t i = 0; i < (ht)->cap; i++) {       \
-            ht_bucket* bucket = (ht)->buckets[i];      \
+        for (size_t i = 0; i < (ht).cap; i++) {        \
+            ht_bucket* bucket = (ht).buckets[i];       \
             if (!bucket) {                             \
                 continue;                              \
             }                                          \
@@ -148,7 +157,16 @@ BASEDEF void sb_push(string_builder* sb, char c);
 BASEDEF void sb_clear(string_builder* sb);
 
 // MISC
-BASEDEF char* base_read_whole_file(const char* filepath);
+
+typedef struct {
+    char* contents;
+    const char* name;
+    struct stat stat;
+} base_file;
+
+BASEDEF char* base_read_whole_file_to_cstr(const char* filepath);
+BASEDEF base_file base_read_whole_file(const char* filepath);
+BASEDEF int base_read_whole_file_buf(const char* filepath, char* buf, size_t buf_size);
 
 #ifdef BASE_IMPLEMENTATION
 
@@ -391,6 +409,24 @@ BASEDEF void* ht_find(hash_table* ht, const void* key) {
     return NULL;
 }
 
+BASEDEF void* ht_delete(hash_table* ht, const void* key) {
+    size_t idx = __ht_idx_for(ht, key);
+    ht_bucket* bucket = ht->buckets[idx];
+    if (!bucket) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < bucket->len; i++) {
+        if (ht->equality_function(bucket->items[i].key, key)) {
+            DA_REMOVE(bucket, i);
+            ht->len--;
+            return bucket->items[i].value;
+        }
+    }
+
+    return NULL;
+}
+
 BASEDEF void ht_destroy(hash_table* ht) {
     for (size_t i = 0; i < ht->cap; i++) {
         if (ht->buckets[i]) {
@@ -403,7 +439,7 @@ BASEDEF void ht_destroy(hash_table* ht) {
 }
 
 // MISC
-BASEDEF char* base_read_whole_file(const char* filepath) {
+BASEDEF char* base_read_whole_file_to_cstr(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f) {
         return NULL;
@@ -422,6 +458,60 @@ BASEDEF char* base_read_whole_file(const char* filepath) {
 
     fclose(f);
     return buf;
+}
+
+BASEDEF base_file base_read_whole_file(const char* filepath) {
+    FILE* f = fopen(filepath, "rb");
+    if (!f) {
+        return (base_file){0};
+    }
+
+    if (fseek(f, 0, SEEK_END) != 0) {
+        return (base_file){0};
+    }
+
+    long fsize = ftell(f);
+    rewind(f);
+
+    char* buf = (char*)BASE_ALLOC(sizeof(char) * (fsize + 1));
+    fread(buf, fsize, 1, f);
+    buf[fsize] = '\0';
+
+    fclose(f);
+
+    base_file file = {0};
+
+    if (stat(filepath, &file.stat) != 0) {
+        return file;
+    }
+
+    file.contents = buf;
+    file.name = filepath;
+
+    return file;
+}
+
+BASEDEF int base_read_whole_file_buf(const char* filepath, char* buf, size_t buf_size) {
+    FILE* f = fopen(filepath, "rb");
+    if (!f) {
+        return 1;
+    }
+
+    if (fseek(f, 0, SEEK_END) != 0) {
+        return 1;
+    }
+
+    long fsize = ftell(f);
+    if (fsize > buf_size - 1) {
+        return 1;
+    }
+
+    rewind(f);
+
+    fread(buf, fsize, 1, f);
+    buf[fsize] = '\0';
+
+    return 0;
 }
 
 #endif
