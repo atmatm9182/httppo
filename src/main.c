@@ -64,9 +64,9 @@ void* server_worker(void* socket) {
         file = httppo_files_get(&files, req->headers.path + 1);
     }
 
+    const char* res_body = file ? file->contents : NULL;
     HttpStatusCode status_code = file ? STATUS_OK : STATUS_NOT_FOUND;
-
-    HttpResponse res = http_res_new(status_code, file->contents, ht_make(NULL, NULL, 0));
+    HttpResponse res = http_res_new(status_code, res_body, ht_make(NULL, NULL, 0));
     http_res_encode_sb(&res, &sb);
     const char* res_str = sb_to_cstr(&sb);
     assert(send(sock, res_str, strlen(res_str), 0) != -1);

@@ -75,7 +75,7 @@ end:
 
 HttppoFiles httppo_files_new(size_t cap) {
     HttppoFiles files = {
-        .table = ht_make(hash_djb2, NULL, cap),  // TODO: fill these functions
+        .table = ht_make(hash_djb2, hash_str_eq, cap),
     };
     pthread_mutex_init(&files.mutex, NULL);
     return files;
