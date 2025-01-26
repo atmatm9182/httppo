@@ -18,9 +18,9 @@
     } while (0)
 
 static SapOption opts[] = {
-    {"threads", 't', "specify the number of threads to use", SAP_INT, 0},
-    {"port", 'p', "specify the port number", SAP_INT, 0},
-    {"help", 'h', "print the help message", SAP_BOOL, 0},
+    {"threads", 't', "specify the number of threads to use", SAP_INT, 0, NULL, 0},
+    {"port", 'p', "specify the port number", SAP_INT, 0, NULL, 0},
+    {"help", 'h', "print the help message", SAP_BOOL, 0, NULL, 0},
 };
 
 HttppoConfig httppo_config_parse(int argc, char** argv) {

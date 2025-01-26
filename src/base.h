@@ -325,10 +325,10 @@ BASEDEF void sb_destroy(string_builder* sb) {
 BASEDEF void sb_sprintf(string_builder* sb, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    int count = vsnprintf(NULL, 0, fmt, args);
+    ssize_t count = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
 
-    while (sb->cap - sb->len < count) {
+    while ((ssize_t)(sb->cap - sb->len) < count) {
         DA_GROW(sb);
     }
 
@@ -501,7 +501,7 @@ BASEDEF int base_read_whole_file_buf(const char* filepath, char* buf, size_t buf
         return 1;
     }
 
-    long fsize = ftell(f);
+    size_t fsize = ftell(f);
     if (fsize > buf_size - 1) {
         return 1;
     }

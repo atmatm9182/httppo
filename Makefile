@@ -5,7 +5,7 @@ SRC_DIR = src
 SOURCES = $(addprefix $(SRC_DIR)/,main.c thread_pool.c protocol.c config.c files.c hash.c)
 COMPILED_OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(SOURCES:.c=.o)))
 
-CFLAGS += -std=c11 -D_POSIX_C_SOURCE=200809L -g -Og -Wall -Wextra -pedantic
+CFLAGS += -std=c11 -D_POSIX_C_SOURCE=200809L -g -Og -Wall -Wextra -pedantic -Wno-unused
 
 .PHONY: clean
 

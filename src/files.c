@@ -62,7 +62,7 @@ HttppoFile* httppo_files_get(HttppoFiles* files, const char* name) {
         goto end;
     }
 
-    if (s.st_mtim.tv_nsec != file->last_modified) {
+    if ((size_t)s.st_mtim.tv_nsec != file->last_modified) {
         if (httppo_file_update(file, &s) != 0) {
             goto end;
         }

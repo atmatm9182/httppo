@@ -32,9 +32,9 @@ typedef struct {
 
 typedef struct {
     SapOption* options;
-    int options_count;
+    size_t options_count;
     const char* argv[SAP_MAX_ARGV_COUNT];
-    int argv_count;
+    size_t argv_count;
     char err[128];
 } SapParser;
 
@@ -53,47 +53,52 @@ int sap_parse(SapParser* parser, int argc, char* argv[]);
 
 int _sap_parse_for_type(const char* arg, SapOptionType type, void** value) {
     switch (type) {
-        case SAP_BOOL:
-            if (strcmp(arg, "true")) {
-                *value = (void*)1;
-                return 0;
-            }
-            if (strcmp(arg, "false")) {
-                *value = (void*)0;
-                return 0;
-            }
-
-            return 1;
-        case SAP_STRING:
-            *value = (void*)arg;
+    case SAP_BOOL:
+        if (strcmp(arg, "true")) {
+            *value = (void*)1;
             return 0;
-
-        case SAP_INT: {
-            char* endptr;
-            long v = strtol(arg, &endptr, 0);
-            if (endptr && *endptr == '\0') {
-                *value = (void*)v;
-                return 0;
-            }
-
-            return 1;
+        }
+        if (strcmp(arg, "false")) {
+            *value = (void*)0;
+            return 0;
         }
 
-        case SAP_FLOAT: {
-            char* endptr;
-            double v = strtod(arg, &endptr);
-            if (endptr && *endptr == '\0') {
-                *value = (void*)(uintptr_t)v;
-                return 0;
-            }
+        return 1;
+    case SAP_STRING:
+        *value = (void*)arg;
+        return 0;
 
-            return 1;
+    case SAP_INT: {
+        char* endptr;
+        long v = strtol(arg, &endptr, 0);
+        if (endptr && *endptr == '\0') {
+            *value = (void*)v;
+            return 0;
         }
+
+        return 1;
+    }
+
+    case SAP_FLOAT: {
+        char* endptr;
+        double v = strtod(arg, &endptr);
+        if (endptr && *endptr == '\0') {
+            *value = (void*)(uintptr_t)v;
+            return 0;
+        }
+
+        return 1;
+    }
+
+    default: {
+        fprintf(stderr, "Unknown SAP option type '%d'\n", type);
+        exit(1);
+    }
     }
 }
 
 SapOption* sap_get_long(SapParser const* parser, const char* name) {
-    for (int i = 0; i < parser->options_count; i++) {
+    for (size_t i = 0; i < parser->options_count; i++) {
         SapOption* opt = &parser->options[i];
         if (strcmp(opt->long_name, name) == 0) {
             return opt;
@@ -104,7 +109,7 @@ SapOption* sap_get_long(SapParser const* parser, const char* name) {
 }
 
 SapOption* sap_get_short(SapParser const* parser, char name) {
-    for (int i = 0; i < parser->options_count; i++) {
+    for (size_t i = 0; i < parser->options_count; i++) {
         SapOption* opt = &parser->options[i];
         if (opt->short_name == name) {
             return opt;
@@ -118,7 +123,7 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
     argc--;
     argv++;
 
-    for (int i = 0; i < parser->options_count; i++) {
+    for (size_t i = 0; i < parser->options_count; i++) {
         parser->options[i].parsed = 0;
     }
 
@@ -136,7 +141,7 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
                 arg++;
             }
 
-            int j;
+            size_t j;
 
             for (j = 0; j < parser->options_count; j++) {
                 SapOption* raw = &parser->options[j];
@@ -178,7 +183,7 @@ int sap_parse(SapParser* parser, int argc, char* argv[]) {
         parser->argv[parser->argv_count++] = arg;
     }
 
-    for (int k = 0; k < parser->options_count; k++) {
+    for (size_t k = 0; k < parser->options_count; k++) {
         SapOption* raw = &parser->options[k];
 
         if (raw->type == SAP_BOOL && !raw->parsed) {
