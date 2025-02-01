@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -22,6 +23,8 @@
 
 #define HTML_INDEX_FILE "index.html"
 #define HTTPPO_FILES_CAP 23
+
+#define TCP_BACKLOG_SIZE 256
 
 // shared state
 static HttppoFiles files;
@@ -82,6 +85,13 @@ void* server_worker(void* socket) {
     return NULL;
 }
 
+static int server_sock = -1;
+
+void die(const char* msg) {
+    fprintf(stderr, "ERROR: %s: %s\n", msg, strerror(errno));
+    exit(1);
+}
+
 void server(ThreadPool* thread_pool, const char* port) {
     struct addrinfo hints = {0};
     struct addrinfo* server_addr;
@@ -96,26 +106,39 @@ void server(ThreadPool* thread_pool, const char* port) {
         exit(1);
     }
 
-    int sock = socket(server_addr->ai_family, server_addr->ai_socktype, 0);
-    assert(sock != -1);
-    assert(bind(sock, server_addr->ai_addr, server_addr->ai_addrlen) != -1);
-    assert(listen(sock, 5) != -1);
+    server_sock = socket(server_addr->ai_family, server_addr->ai_socktype, 0);
+    if (server_sock == -1) {
+        die("call to `socket` failed");
+    }
+
+    int opt_value = 1;
+    if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt_value, sizeof(opt_value)) == -1) {
+        die("failed to set socket options");
+    }
+
+    if (bind(server_sock, server_addr->ai_addr, server_addr->ai_addrlen) == -1) {
+        die("call to `bind` failed");
+    }
+
+    if (listen(server_sock, TCP_BACKLOG_SIZE) == -1) {
+        die("call to `listen` failed");
+    }
 
     struct sockaddr_storage client_addr;
     socklen_t client_addr_size = sizeof(client_addr);
 
     while (true) {
-        int client_sock = accept(sock, (struct sockaddr*)&client_addr, &client_addr_size);
+        int client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_addr_size);
         if (client_sock == -1) {
-            fprintf(stderr, "ERROR: could not accept the connection: %s\n", strerror(errno));
-            exit(1);
+            goto fail;
         }
 
         threadpool_schedule(thread_pool, server_worker, (void*)(uintptr_t)client_sock);
     }
 
-    close(sock);
-    freeaddrinfo(server_addr);
+fail:
+    close(server_sock);
+    die("could not accept the connection");
 }
 
 static void init_state(void) {
