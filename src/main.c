@@ -13,7 +13,7 @@
 #define BASE_IMPLEMENTATION
 #include "base.h"
 
-#define ARENA_IMPLEMENTATION
+#define ARENA_H_IMPLEMENTATION
 #include "arena.h"
 #include "config.h"
 #include "files.h"
@@ -21,7 +21,6 @@
 #include "thread_pool.h"
 
 #define HTML_INDEX_FILE "index.html"
-#define INIT_ARENA_CAP 4096
 #define HTTPPO_FILES_CAP 23
 
 // shared state
@@ -35,7 +34,6 @@ static thread_local bool is_state_init = false;
 void* server_worker(void* socket) {
     if (!is_state_init) {
         sb = sb_new(1024);
-        arena = arena_new(INIT_ARENA_CAP);
         is_state_init = true;
     }
 
