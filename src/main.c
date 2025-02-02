@@ -20,6 +20,7 @@
 #include "files.h"
 #include "protocol.h"
 #include "thread_pool.h"
+#include "util.h"
 
 #define HTML_INDEX_FILE "index.html"
 #define HTTPPO_FILES_CAP 23
@@ -86,11 +87,6 @@ void* server_worker(void* socket) {
 }
 
 static int server_sock = -1;
-
-void die(const char* msg) {
-    fprintf(stderr, "ERROR: %s: %s\n", msg, strerror(errno));
-    exit(1);
-}
 
 void server(ThreadPool* thread_pool, const char* port) {
     struct addrinfo hints = {0};

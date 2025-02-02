@@ -7,12 +7,16 @@
 
 #include "base.h"
 #include "hash.h"
+#include "util.h"
 
 #define HTTPPO_FILES_REVALIDATION_TIME (2500 * 1000)
 
 static size_t get_time_nsec(void) {
     struct timespec t;
-    clock_gettime(CLOCK_REALTIME, &t);  // FIXME: check an error here (probably)
+    if (clock_gettime(CLOCK_REALTIME, &t) == -1) {
+        die("clock_gettime");
+    }
+
     return t.tv_nsec;
 }
 
