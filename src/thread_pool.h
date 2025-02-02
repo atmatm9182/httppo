@@ -24,6 +24,8 @@ typedef struct {
 typedef struct WorkerThread {
     pthread_t handle;
     WorkerThreadRequestQueue queue;
+    pthread_cond_t cond_var;
+    pthread_mutex_t cond_mu;
 } WorkerThread;
 
 typedef struct {

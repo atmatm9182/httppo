@@ -52,31 +52,38 @@ static void* threadpool_worker(void* worker_data) {
     WorkerThreadRequestQueue* queue = &init_data->thread->queue;
 
     while (true) {
-        if (atomic_load(&queue->size) == 0) {
-            continue;
+        assert(pthread_mutex_lock(&init_data->thread->cond_mu) == 0);
+        pthread_cond_wait(&init_data->thread->cond_var, &init_data->thread->cond_mu);
+
+        while (atomic_load(&queue->size) != 0) {
+            WorkerData* data = wtrq_dequeue(queue);
+            data->proc(data->arg);
+            free(data);
         }
 
-        WorkerData* data = wtrq_dequeue(queue);
-        data->proc(data->arg);
-        free(data);
+        assert(pthread_mutex_unlock(&init_data->thread->cond_mu) == 0);
     }
 
     return NULL;
 }
 
 ThreadPool threadpool_init(size_t count) {
+    pthread_mutexattr_t muattr;
+    pthread_mutexattr_init(&muattr);
+    pthread_mutexattr_setrobust(&muattr, PTHREAD_MUTEX_ROBUST);
+    pthread_mutexattr_settype(&muattr, PTHREAD_MUTEX_ERRORCHECK);
+
     WorkerThread* threads = malloc(count * sizeof(WorkerThread));
     for (size_t i = 0; i < count; i++) {
+        WorkerThread* thread = &threads[i];
+        assert(pthread_cond_init(&thread->cond_var, NULL) == 0);
+        assert(pthread_mutex_init(&thread->cond_mu, &muattr) == 0);
+
         WorkerInitData* data = malloc(sizeof(WorkerInitData));
-        data->thread = &threads[i];
+        data->thread = thread;
         WorkerThreadRequestQueue queue = {0};
         queue.cap = HTTPO_WTRQ_CAP;
         queue.items = malloc(sizeof(WorkerData*) * queue.cap);
-
-        pthread_mutexattr_t muattr;
-        pthread_mutexattr_init(&muattr);
-        pthread_mutexattr_setrobust(&muattr, PTHREAD_MUTEX_ROBUST);
-        pthread_mutexattr_settype(&muattr, PTHREAD_MUTEX_ERRORCHECK);
 
         assert(pthread_mutex_init(&queue.mutex, &muattr) == 0);
         data->thread->queue = queue;
@@ -108,6 +115,13 @@ void threadpool_schedule(ThreadPool* thread_pool, WorkerProc proc, void* arg) {
 
     while (!wtrq_enqueue(&thread->queue, data)) {
         // wait until the queue has free space
+    }
+
+    // the queue was empty before, need to notify the worker thread
+    if (atomic_load(&thread->queue.size) == 1) {
+        pthread_mutex_lock(&thread->cond_mu);
+        pthread_cond_broadcast(&thread->cond_var);
+        pthread_mutex_unlock(&thread->cond_mu);
     }
 }
 
